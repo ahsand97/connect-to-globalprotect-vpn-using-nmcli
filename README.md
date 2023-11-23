@@ -1,6 +1,6 @@
 # Connect to a Glopal Protect VPN that requires SAML authentication using NetworkManager
 
-This application allows to create and connect to a Global Protect VPN connection that requires SAML authentication using `nmcli` (NetworkManager).
+This application allows to create and connect to a Global Protect VPN connection that requires SAML authentication using `nmcli` (NetworkManager) and `openconnect`.
 
 Make sure to have installed `openconnect` and `network-manager-openconnect`.
 
@@ -15,10 +15,10 @@ python -m pip install -r requirements.txt
 Then the script can be used, this is the help message:
 
 ```
-usage: connect-to-global-protect-using-nmcli [-h] --connection-name CONNECTION_NAME --vpn-portal VPN_PORTAL [--vpn-user-group {portal,gateway}]
-                                             [--vpn-os {linux,linux-64,win,mac-intel,android,apple-ios}]
+usage: connect_to_global_protect_using_nmcli [-h] --connection-name CONNECTION_NAME --vpn-portal VPN_PORTAL [--vpn-user-group {portal,gateway}] [--vpn-os {linux,linux-64,win,mac-intel,android,apple-ios}]
+                                             [--openconnect-args OPENCONNECT_ARGS]
 
-Connect to a Glopal Protect VPN connection that requires SAML authenticaton using nmcli.
+Connect to a Glopal Protect VPN connection that requires SAML authenticaton using nmcli and openconnect.
 
 options:
   -h, --help            show this help message and exit
@@ -27,9 +27,11 @@ options:
   --vpn-portal VPN_PORTAL, --vpn-gateway VPN_PORTAL
                         Address of the portal/gateway of the Global Protect VPN.
   --vpn-user-group {portal,gateway}
-                        Usergroup to pass to openconnect. Defaults to 'portal'
+                        Usergroup to pass to openconnect --usergroup parameter. Defaults to 'portal'
   --vpn-os {linux,linux-64,win,mac-intel,android,apple-ios}
-                        OS to pass to Global Protect's Portal.
+                        OS to pass to openconnect --os parameter.
+  --openconnect-args OPENCONNECT_ARGS
+                        Extra arguments to pass to openconnect.
 ```
 
 ## Example:
