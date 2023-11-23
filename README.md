@@ -1,4 +1,4 @@
-# Connect to a Glopal Protect VPN using NetworkManager (nmcli)
+# Connect to a Glopal Protect VPN that requires SAML authentication using NetworkManager
 
 This application allows to create and connect to a Global Protect VPN connection that requires SAML authentication using `nmcli` (NetworkManager).
 
@@ -35,9 +35,15 @@ options:
 ## Example:
 
 ```bash
-python connect_to_global_protect_using_nmcli.py --conection-name "My GlopalProtect VPN" --vpn-portal "portal.testvpn.com" --vpn-user-group "portal" --vpn-os "linux"
+python connect_to_global_protect_using_nmcli.py --conection-name "Test GP VPN" --vpn-portal "portal.testvpn.com" --vpn-user-group "portal" --vpn-os "linux"
 ```
 
-The script will automatically check if exists a connection with the name "My GlopalProtect VPN" configured for a VPN with the protocol "gp" (GlopalProtect) and for the portal specified, if the connection exists already then it is used to stablish the connection, if not, the script will automatically create a new connection with the parameters specified and use it to connect to the VPN.
+The script will automatically check if exists a connection with the name "Test GP VPN" configured for a VPN with the protocol "gp" (GlopalProtect) and for the portal specified, if the connection exists already then it is used to stablish the connection, if not, the script will automatically create a new connection with the parameters specified and use it to connect to the VPN.
 
 After creating/getting the connection that will be used to connect to the VPN, then the script will open a Selenium browser to perform the SAML authentication and get the necessary prelogin cookie and username to get the vpn secrets to then connect  to the VPN via `nmcli`.
+
+![Screenshot_20231123_101957](https://github.com/ahsand97/connect-to-globalprotect-using-nmcli/assets/32344641/4838fd3a-fdde-4e21-9289-67c5e7d82e09)
+
+![Screenshot_20231123_125230](https://github.com/ahsand97/connect-to-globalprotect-using-nmcli/assets/32344641/956e3bec-21b7-40e9-85c4-d4d968de2672)
+
+To delete the cache and do the SAML authentication again, the folder `~/.config/connect_to_global_protect_using_nmcli` can be removed.
