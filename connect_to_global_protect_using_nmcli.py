@@ -3,6 +3,7 @@ import tempfile
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import IO, NamedTuple, Optional, cast
+from xml.etree import ElementTree as ET
 
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchWindowException, TimeoutException
@@ -167,10 +168,31 @@ def connect_to_vpn_using_nmcli(
             driver: WebDriver = webdriver.Chrome(options=chrome_options)
             driver.get(url=url)
             WebDriverWait(driver=driver, timeout=180).until(
-                lambda driver: all(s in driver.page_source for s in ("Login Successful", "prelogin-cookie"))
+                lambda driver: "login successful" in driver.page_source.lower()
+                and any(s.lower() in driver.page_source.lower() for s in ("prelogin-cookie", "portal-userauthcookie"))
             )
-            cookie = driver.page_source.split(sep="<prelogin-cookie>")[1].split(sep="</prelogin-cookie>")[0]
-            username = driver.page_source.split(sep="<saml-username>")[1].split(sep="</saml-username>")[0]
+            xml_string: ET.Element = ET.fromstring(
+                text=driver.page_source, parser=ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+            )
+            xml_element_with_cookie_and_username: Optional[ET.Element] = None
+            for node in xml_string.iter():
+                if not node.text:
+                    continue
+                if "saml-username" in node.text.lower() and any(
+                    s in node.text.lower() for s in ("prelogin-cookie", "portal-userauthcookie")
+                ):
+                    xml_element_with_cookie_and_username = ET.fromstring(text=f"<body>{node.text.strip()}</body>")
+                    break
+            if xml_element_with_cookie_and_username is not None:
+                for node in xml_element_with_cookie_and_username.iter():
+                    if not node.text:
+                        continue
+                    if "saml-username" in node.tag.lower():
+                        username = node.text
+                    elif "cookie" in node.tag.lower():
+                        cookie = node.text
+                    if len(username) and len(cookie):
+                        break
         except TimeoutException:
             print("Timed out waiting for authentication, try again.")
         except NoSuchWindowException:
