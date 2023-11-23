@@ -115,7 +115,12 @@ def connection_is_active(connection_name: str, connection_uuid: str) -> bool:
 
 
 def connect_to_vpn_using_nmcli(
-    vpn_portal: str, vpn_user_group: str, vpn_os: Optional[str], connection_name: str, connection_uuid: str
+    vpn_portal: str,
+    vpn_user_group: str,
+    vpn_os: Optional[str],
+    connection_name: str,
+    connection_uuid: str,
+    openconnect_args: Optional[str],
 ) -> None:
     """Get the cookie (SAML auth) and necessary data to connect to the GlobalProtect VPN using `nmcli`"""
 
@@ -218,7 +223,7 @@ def connect_to_vpn_using_nmcli(
                     (
                         f"echo {prelogin_cookie} | LANG=en openconnect --protocol=gp"
                         f" --user={username} --usergroup={vpn_user_group}:prelogin-cookie --passwd-on-stdin"
-                        f" --authenticate {f'--os={vpn_os} ' if vpn_os is not None else ''}{vpn_portal}"
+                        f" --authenticate{f' --os={vpn_os} ' if vpn_os is not None else ''}{f' {openconnect_args}' if openconnect_args is not None else ''} {vpn_portal}"
                     ),
                 ],
                 text=True,
@@ -281,6 +286,7 @@ class Arguments(NamedTuple):
     vpn_portal_gateway: str
     vpn_user_group: str
     vpn_os: Optional[str]
+    openconnect_args: Optional[str]
 
 
 def parse_cli_arguments() -> Arguments:
@@ -299,15 +305,16 @@ def parse_cli_arguments() -> Arguments:
     )
     parser.add_argument(
         "--vpn-user-group",
-        help="Usergroup to pass to openconnect. Defaults to 'portal'",
-        default="portal",
+        help="Usergroup to pass to openconnect --usergroup parameter. Defaults to 'portal'",
         choices=["portal", "gateway"],
+        default="portal",
     )
     parser.add_argument(
         "--vpn-os",
-        help=f"OS to pass to Global Protect's Portal.",
+        help=f"OS to pass to openconnect --os parameter.",
         choices=["linux", "linux-64", "win", "mac-intel", "android", "apple-ios"],
     )
+    parser.add_argument("--openconnect-args", help="Extra arguments to pass to openconnect.")
 
     # Parse arguments
     args: Namespace = parser.parse_args()
@@ -316,6 +323,7 @@ def parse_cli_arguments() -> Arguments:
         vpn_portal_gateway=args.vpn_portal,
         vpn_user_group=args.vpn_user_group,
         vpn_os=args.vpn_os,
+        openconnect_args=args.openconnect_args,
     )
 
 
@@ -344,6 +352,7 @@ def main() -> None:
         vpn_os=arguments.vpn_os,
         connection_name=arguments.connection_name,
         connection_uuid=uuid_of_connection,
+        openconnect_args=arguments.openconnect_args,
     )
 
 
