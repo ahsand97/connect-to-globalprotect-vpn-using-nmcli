@@ -1,4 +1,4 @@
-# Connect to a Glopal Protect VPN that requires SAML authentication using NetworkManager
+# Connect to a Glopal Protect VPN that requires SAML authentication using NetworkManager and openconnect
 
 This application allows to create and connect to a Global Protect VPN connection that requires SAML authentication using `nmcli` (NetworkManager) and `openconnect`.
 
