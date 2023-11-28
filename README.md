@@ -27,7 +27,7 @@ options:
   --vpn-portal VPN_PORTAL, --vpn-gateway VPN_PORTAL
                         Address of the portal/gateway of the Global Protect VPN.
   --vpn-user-group {portal,gateway}
-                        Usergroup to pass to openconnect --usergroup parameter. Defaults to 'portal'
+                        Usergroup to pass to openconnect --usergroup parameter. Options are 'portal' or 'gateway', defaults to 'portal'.
   --vpn-os {linux,linux-64,win,mac-intel,android,apple-ios}
                         OS to pass to openconnect --os parameter.
   --openconnect-args OPENCONNECT_ARGS

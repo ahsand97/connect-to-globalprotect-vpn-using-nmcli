@@ -307,7 +307,10 @@ def parse_cli_arguments() -> Arguments:
     )
     parser.add_argument(
         "--vpn-user-group",
-        help="Usergroup to pass to openconnect --usergroup parameter. Defaults to 'portal'",
+        help=(
+            "Usergroup to pass to openconnect --usergroup parameter. Options are 'portal' or 'gateway', defaults to"
+            " 'portal'."
+        ),
         choices=["portal", "gateway"],
         default="portal",
     )
