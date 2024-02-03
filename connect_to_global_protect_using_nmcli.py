@@ -193,7 +193,7 @@ def connect_to_vpn_using_nmcli(
                     if not node.text:
                         continue
                     if "saml-username" in node.tag.lower():
-                        username = node.text
+                        username = node.text.replace('\\', '\\\\')  # Backslashes need to be escaped if they're part of the username.
                     elif "cookie" in node.tag.lower():
                         cookie = node.text
                     if len(username) and len(cookie):
