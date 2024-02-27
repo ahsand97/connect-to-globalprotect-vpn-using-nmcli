@@ -1,5 +1,6 @@
 import subprocess
 import tempfile
+import traceback
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import IO, NamedTuple, Optional, cast
@@ -99,6 +100,7 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
             )
         except Exception as e:
             print(f'An error occurred creating connection "{connection_name}", exception: {e}')
+            traceback.print_tb(tb=e.__traceback__)
     return uuid_of_desired_connection
 
 
@@ -153,6 +155,7 @@ def connect_to_vpn_using_nmcli(
                         break
         except Exception as e:
             print(f"An error occurred obtaining URL to perform SAML authentication, exception: {e}")
+            traceback.print_tb(tb=e.__traceback__)
         finally:
             if not len(url_for_saml_auth):
                 print("No URL was found to perform SAML authentication, try again.")
@@ -174,7 +177,7 @@ def connect_to_vpn_using_nmcli(
             driver.get(url=url)
             WebDriverWait(driver=driver, timeout=180).until(
                 lambda driver: "login successful" in driver.page_source.lower()
-                and any(s.lower() in driver.page_source.lower() for s in ("prelogin-cookie", "portal-userauthcookie"))
+                and any(s in driver.page_source.lower() for s in ("prelogin-cookie", "portal-userauthcookie"))
             )
             xml_string: ET.Element = ET.fromstring(
                 text=driver.page_source, parser=ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
@@ -193,7 +196,9 @@ def connect_to_vpn_using_nmcli(
                     if not node.text:
                         continue
                     if "saml-username" in node.tag.lower():
-                        username = node.text.replace('\\', '\\\\')  # Backslashes need to be escaped if they're part of the username.
+                        username = node.text.replace(
+                            "\\", "\\\\"  # Backslashes need to be escaped if they're part of the username.
+                        )
                     elif "cookie" in node.tag.lower():
                         cookie = node.text
                     if len(username) and len(cookie):
@@ -204,6 +209,7 @@ def connect_to_vpn_using_nmcli(
             print("The window was closed before finishing the authentication, try again.")
         except Exception as e:
             print(f"An error occurred performing SAML authentication, exception: {e}")
+            traceback.print_tb(tb=e.__traceback__)
         finally:
             if not len(cookie) or not len(username):
                 print("No cookie or username was obtained when performing SAML authentication, try again.")
@@ -222,8 +228,9 @@ def connect_to_vpn_using_nmcli(
                     "-c",
                     (
                         f"echo {prelogin_cookie} | LANG=en openconnect --protocol=gp"
-                        f" --user={username} --usergroup={vpn_user_group}:prelogin-cookie --passwd-on-stdin"
-                        f" --authenticate{f' --os={vpn_os} ' if vpn_os is not None else ''}{f' {openconnect_args}' if openconnect_args is not None else ''} {vpn_portal}"
+                        f" --user={username} --usergroup={f'{vpn_user_group}:prelogin-cookie' if vpn_user_group == 'gateway' else f'{vpn_user_group}:portal-userauthcookie'}"
+                        f" --passwd-on-stdin --authenticate{f' --os={vpn_os} ' if vpn_os is not None else ''}"
+                        f"{f' {openconnect_args}' if openconnect_args is not None else ''} {vpn_portal}"
                     ),
                 ],
                 text=True,
@@ -243,6 +250,7 @@ def connect_to_vpn_using_nmcli(
                     resolve = line.split(sep="=", maxsplit=1)[1].replace("'", "")
         except Exception as e:
             print(f"An error occurred getting the vpn secrets for nmcli, exception: {e}")
+            traceback.print_tb(tb=e.__traceback__)
         finally:
             if not len(cookie) or not len(fingerprint) or not len(host) or not len(resolve):
                 print("Could not obtain all the vpn secrets for nmcli, try again.")
@@ -263,6 +271,7 @@ def connect_to_vpn_using_nmcli(
             )
         except Exception as e:
             print(f'An error occurred connecting to "{connection_name}" with uuid "{connection_uuid}", exception: {e}')
+            traceback.print_tb(tb=e.__traceback__)
         finally:
             Path(path_of_file).unlink(missing_ok=True)
 
