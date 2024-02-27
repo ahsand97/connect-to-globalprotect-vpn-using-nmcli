@@ -15,7 +15,7 @@ python -m pip install -r requirements.txt
 Then the script can be used, this is the help message:
 
 ```
-usage: connect_to_global_protect_using_nmcli [-h] --connection-name CONNECTION_NAME --vpn-portal VPN_PORTAL [--vpn-user-group {portal,gateway}] [--vpn-os {linux,linux-64,win,mac-intel,android,apple-ios}]
+usage: connect_to_global_protect_vpn_using_nmcli [-h] --connection-name CONNECTION_NAME --vpn-portal VPN_PORTAL [--vpn-user-group {portal,gateway}] [--vpn-os {linux,linux-64,win,mac-intel,android,apple-ios}]
                                              [--openconnect-args OPENCONNECT_ARGS]
 
 Connect to a Glopal Protect VPN connection that requires SAML authenticaton using nmcli and openconnect.
@@ -37,7 +37,7 @@ options:
 ## Example:
 
 ```bash
-python connect_to_global_protect_using_nmcli.py --conection-name "Test GP VPN" --vpn-portal "portal.testvpn.com" --vpn-user-group "portal" --vpn-os "linux"
+python connect_to_global_protect_vpn_using_nmcli.py --conection-name "Test GP VPN" --vpn-portal "portal.testvpn.com" --vpn-user-group "portal" --vpn-os "linux"
 ```
 
 The script will automatically check if exists a connection with the name "Test GP VPN" configured for a VPN with the protocol "gp" (GlopalProtect) and for the portal specified, if the connection exists already then it is used to stablish the connection, if not, the script will automatically create a new connection with the parameters specified and use it to connect to the VPN.
@@ -48,4 +48,4 @@ After creating/getting the connection that will be used to connect to the VPN, t
 
 ![Screenshot_20231123_125230](https://github.com/ahsand97/connect-to-globalprotect-using-nmcli/assets/32344641/956e3bec-21b7-40e9-85c4-d4d968de2672)
 
-To delete the cache and do the SAML authentication again, the folder `~/.config/connect_to_global_protect_using_nmcli` can be removed.
+To delete the cache and do the SAML authentication again, the folder `~/.config/connect_to_global_protect_vpn_using_nmcli` can be removed.
