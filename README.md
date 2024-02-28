@@ -48,6 +48,8 @@ The script will automatically check if exists a connection with the name "Test G
 
 After creating/getting the connection that will be used to connect to the VPN, then the script will open a Selenium browser to perform the SAML authentication and get the necessary prelogin cookie and username to get the vpn secrets to then connect  to the VPN via `nmcli`.
 
+Example of output of an existing connection successfully connected:
+
 ![image](https://github.com/ahsand97/connect-to-globalprotect-vpn-using-nmcli/assets/32344641/4270904b-2232-437a-8d6b-5a246cf7ab6d)
 
 ![Screenshot_20231123_125230](https://github.com/ahsand97/connect-to-globalprotect-using-nmcli/assets/32344641/956e3bec-21b7-40e9-85c4-d4d968de2672)
