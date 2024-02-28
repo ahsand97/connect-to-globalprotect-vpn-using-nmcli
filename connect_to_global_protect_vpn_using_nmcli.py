@@ -118,7 +118,7 @@ def connection_is_active(connection_name: str, connection_uuid: str) -> bool:
 
 def connect_to_vpn_using_nmcli(
     vpn_portal: str,
-    vpn_user_group: str,
+    vpn_user_group: Optional[str],
     vpn_os: Optional[str],
     connection_name: str,
     connection_uuid: str,
@@ -134,7 +134,11 @@ def connect_to_vpn_using_nmcli(
             command_to_obtain_url: list[str] = [
                 "openconnect",
                 "--protocol=gp",
-                f"--usergroup={vpn_user_group}",
+                (
+                    f"{f'--usergroup={vpn_user_group}' if len(vpn_user_group) else ''}"
+                    if vpn_user_group is not None
+                    else ""
+                ),
                 f"--os={vpn_os} " if vpn_os is not None else "",
                 f"{openconnect_args.strip() if len(openconnect_args) else ''}" if openconnect_args is not None else "",
                 vpn_portal,
@@ -229,7 +233,19 @@ def connect_to_vpn_using_nmcli(
                 "openconnect",
                 "--protocol=gp",
                 f"--user={username}",
-                f"--usergroup={f'{vpn_user_group}:prelogin-cookie' if vpn_user_group == 'gateway' else f'{vpn_user_group}:portal-userauthcookie'}",
+                (
+                    f"--usergroup={vpn_user_group}:prelogin-cookie"
+                    if vpn_user_group == "gateway"
+                    else (
+                        f"--usergroup={vpn_user_group}:portal-userauthcookie"
+                        if vpn_user_group == "portal"
+                        else (
+                            f"{f'--usergroup={vpn_user_group}' if len(vpn_user_group) else ''}"
+                            if vpn_user_group is not None
+                            else ""
+                        )
+                    )
+                ),
                 "--passwd-on-stdin",
                 "--authenticate",
                 f"--os={vpn_os}" if vpn_os is not None else "",
@@ -302,7 +318,7 @@ def connect_to_vpn_using_nmcli(
 class Arguments(NamedTuple):
     connection_name: str
     vpn_portal_gateway: str
-    vpn_user_group: str
+    vpn_user_group: Optional[str]
     vpn_os: Optional[str]
     openconnect_args: Optional[str]
 
