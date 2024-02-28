@@ -127,20 +127,34 @@ def connect_to_vpn_using_nmcli(
     """Get the cookie (SAML auth) and necessary data to connect to the GlobalProtect VPN using `nmcli`"""
 
     def get_url_for_saml_authentication() -> str:
+        """Get URL to perform SAML authentication"""
         url_for_saml_auth: str = ""
         try:
             print("Getting URL to perform SAML authentication...")
-            # i.e: openconnect --protocol=gp --usergroup=portal --os=win portal.test.com
+            vpn_user_group_: Optional[str] = vpn_user_group
+            if vpn_user_group_ is not None:
+                if len(vpn_user_group_.strip()):
+                    vpn_user_group_ = vpn_user_group_.strip()
+                    if " " in vpn_user_group_:
+                        vpn_user_group_ = vpn_user_group_.split(sep=" ")[0]
+                    elif ":" in vpn_user_group_:
+                        vpn_user_group_ = vpn_user_group_.split(sep=":")[0]
+            # i.e: openconnect --non-inter --protocol=gp --usergroup=gateway --os=win portal.test.com
             command_to_obtain_url: list[str] = [
                 "openconnect",
+                "--non-inter",
                 "--protocol=gp",
                 (
-                    f"{f'--usergroup={vpn_user_group}' if len(vpn_user_group) else ''}"
-                    if vpn_user_group is not None
+                    f"{f'--usergroup={vpn_user_group_}' if len(vpn_user_group_) else ''}"
+                    if vpn_user_group_ is not None
                     else ""
                 ),
-                f"--os={vpn_os} " if vpn_os is not None else "",
-                f"{openconnect_args.strip() if len(openconnect_args) else ''}" if openconnect_args is not None else "",
+                f"{f'--os={vpn_os.strip()}' if len(vpn_os.strip()) else ''}" if vpn_os is not None else "",
+                (
+                    f"{openconnect_args.strip() if len(openconnect_args.strip()) else ''}"
+                    if openconnect_args is not None
+                    else ""
+                ),
                 vpn_portal,
             ]
             proc: subprocess.Popen[str] = subprocess.Popen(
@@ -240,7 +254,7 @@ def connect_to_vpn_using_nmcli(
                         f"--usergroup={vpn_user_group}:portal-userauthcookie"
                         if vpn_user_group == "portal"
                         else (
-                            f"{f'--usergroup={vpn_user_group}' if len(vpn_user_group) else ''}"
+                            f"{f'--usergroup={vpn_user_group.strip()}' if len(vpn_user_group.strip()) else ''}"
                             if vpn_user_group is not None
                             else ""
                         )
@@ -248,8 +262,12 @@ def connect_to_vpn_using_nmcli(
                 ),
                 "--passwd-on-stdin",
                 "--authenticate",
-                f"--os={vpn_os}" if vpn_os is not None else "",
-                f"{openconnect_args.strip() if len(openconnect_args) else ''}" if openconnect_args is not None else "",
+                f"{f'--os={vpn_os.strip()}' if len(vpn_os.strip()) else ''}" if vpn_os is not None else "",
+                (
+                    f"{openconnect_args.strip() if len(openconnect_args.strip()) else ''}"
+                    if openconnect_args is not None
+                    else ""
+                ),
                 vpn_portal,
             ]
             secrets: subprocess.Popen[str] = subprocess.Popen(
