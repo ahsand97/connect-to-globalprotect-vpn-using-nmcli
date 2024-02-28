@@ -130,15 +130,17 @@ def connect_to_vpn_using_nmcli(
         url_for_saml_auth: str = ""
         try:
             print("Getting URL to perform SAML authentication...")
+            # i.e: openconnect --protocol=gp --usergroup=portal --os=win portal.test.com
+            command_to_obtain_url: list[str] = [
+                "openconnect",
+                "--protocol=gp",
+                f"--usergroup={vpn_user_group}",
+                f"--os={vpn_os} " if vpn_os is not None else "",
+                f"{openconnect_args.strip() if len(openconnect_args) else ''}" if openconnect_args is not None else "",
+                vpn_portal,
+            ]
             proc: subprocess.Popen[str] = subprocess.Popen(
-                args=[
-                    "bash",
-                    "-c",
-                    (
-                        "LANG=en openconnect --protocol=gp"
-                        f" --usergroup={vpn_user_group} {f'--os={vpn_os} ' if vpn_os is not None else ''}{vpn_portal}"
-                    ),
-                ],
+                args=["bash", "-c", f"LANG=en {' '.join([x for x in command_to_obtain_url if len(x)])}"],
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -222,16 +224,23 @@ def connect_to_vpn_using_nmcli(
         resolve: str = ""
         try:
             print("Getting vpn secrets for nmcli...")
+            # i.e: openconnect --protocol=gp --user=someuser@company.com --usergroup=gateway:prelogin-cookie --passwd-on-stdin --authenticate --os=win portal.test.com
+            command_to_obtain_vpn_secrets: list[str] = [
+                "openconnect",
+                "--protocol=gp",
+                f"--user={username}",
+                f"--usergroup={f'{vpn_user_group}:prelogin-cookie' if vpn_user_group == 'gateway' else f'{vpn_user_group}:portal-userauthcookie'}",
+                "--passwd-on-stdin",
+                "--authenticate",
+                f"--os={vpn_os}" if vpn_os is not None else "",
+                f"{openconnect_args.strip() if len(openconnect_args) else ''}" if openconnect_args is not None else "",
+                vpn_portal,
+            ]
             secrets: subprocess.Popen[str] = subprocess.Popen(
                 args=[
                     "bash",
                     "-c",
-                    (
-                        f"echo {prelogin_cookie} | LANG=en openconnect --protocol=gp"
-                        f" --user={username} --usergroup={f'{vpn_user_group}:prelogin-cookie' if vpn_user_group == 'gateway' else f'{vpn_user_group}:portal-userauthcookie'}"
-                        f" --passwd-on-stdin --authenticate{f' --os={vpn_os} ' if vpn_os is not None else ''}"
-                        f"{f' {openconnect_args}' if openconnect_args is not None else ''} {vpn_portal}"
-                    ),
+                    f"echo {prelogin_cookie} | LANG=en {' '.join([x for x in command_to_obtain_vpn_secrets if len(x)])}",
                 ],
                 text=True,
                 stdout=subprocess.PIPE,
@@ -316,19 +325,16 @@ def parse_cli_arguments() -> Arguments:
     )
     parser.add_argument(
         "--vpn-user-group",
-        help=(
-            "Usergroup to pass to openconnect --usergroup parameter. Options are 'portal' or 'gateway', defaults to"
-            " 'portal'."
-        ),
-        choices=["portal", "gateway"],
-        default="portal",
+        help="Usergroup to pass to openconnect --usergroup parameter. Options can be: 'portal', 'gateway'",
     )
     parser.add_argument(
         "--vpn-os",
-        help=f"OS to pass to openconnect --os parameter.",
-        choices=["linux", "linux-64", "win", "mac-intel", "android", "apple-ios"],
+        help="OS to pass to openconnect --os parameter. Options can be: 'linux', 'linux-64', 'win', 'mac-intel', 'android', 'apple-ios'",
     )
-    parser.add_argument("--openconnect-args", help="Extra arguments to pass to openconnect.")
+    parser.add_argument(
+        "--openconnect-args",
+        help="Extra arguments to pass to openconnect, make sure to add quotes if it's more than one parameter.",
+    )
 
     # Parse arguments
     args: Namespace = parser.parse_args()
@@ -345,6 +351,12 @@ def main() -> None:
     """Main function"""
     # Get arguments from command line
     arguments: Arguments = parse_cli_arguments()
+    if arguments.openconnect_args is not None:
+        if any(x in arguments.openconnect_args for x in ("--usergroup", "--os")):
+            print(
+                "The parameters --usergroup and --os can't be part of the parameter --openconnect-args, they can be specified as normal parameters."
+            )
+            return
 
     # Check if connection exists if not create it
     uuid_of_connection: Optional[str] = create_connection(
