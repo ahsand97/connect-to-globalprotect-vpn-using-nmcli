@@ -341,11 +341,11 @@ def parse_cli_arguments() -> Arguments:
     )
     parser.add_argument(
         "--vpn-user-group",
-        help="Usergroup to pass to openconnect --usergroup parameter. Options can be: 'portal', 'gateway'",
+        help="Usergroup to pass to openconnect's --usergroup parameter. Options can be: 'portal', 'gateway'.",
     )
     parser.add_argument(
         "--vpn-os",
-        help="OS to pass to openconnect --os parameter. Options can be: 'linux', 'linux-64', 'win', 'mac-intel', 'android', 'apple-ios'",
+        help="OS to pass to openconnect's --os parameter. Options can be: 'linux', 'linux-64', 'win', 'mac-intel', 'android', 'apple-ios'.",
     )
     parser.add_argument(
         "--openconnect-args",

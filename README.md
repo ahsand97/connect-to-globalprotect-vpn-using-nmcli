@@ -15,8 +15,7 @@ python -m pip install -r requirements.txt
 Then the script can be used, this is the help message:
 
 ```
-usage: connect_to_global_protect_vpn_using_nmcli [-h] --connection-name CONNECTION_NAME --vpn-portal VPN_PORTAL [--vpn-user-group {portal,gateway}] [--vpn-os {linux,linux-64,win,mac-intel,android,apple-ios}]
-                                             [--openconnect-args OPENCONNECT_ARGS]
+usage: connect_to_global_protect_vpn_using_nmcli [-h] --connection-name CONNECTION_NAME --vpn-portal VPN_PORTAL [--vpn-user-group VPN_USER_GROUP] [--vpn-os VPN_OS] [--openconnect-args OPENCONNECT_ARGS]
 
 Connect to a Glopal Protect VPN connection that requires SAML authenticaton using nmcli and openconnect.
 
@@ -26,12 +25,11 @@ options:
                         Name for the connection to add with nmcli if it's not already created.
   --vpn-portal VPN_PORTAL, --vpn-gateway VPN_PORTAL
                         Address of the portal/gateway of the Global Protect VPN.
-  --vpn-user-group {portal,gateway}
-                        Usergroup to pass to openconnect --usergroup parameter. Options are 'portal' or 'gateway', defaults to 'portal'.
-  --vpn-os {linux,linux-64,win,mac-intel,android,apple-ios}
-                        OS to pass to openconnect --os parameter.
+  --vpn-user-group VPN_USER_GROUP
+                        Usergroup to pass to openconnect's --usergroup parameter. Options can be: 'portal', 'gateway'.
+  --vpn-os VPN_OS       OS to pass to openconnect's --os parameter. Options can be: 'linux', 'linux-64', 'win', 'mac-intel', 'android', 'apple-ios'.
   --openconnect-args OPENCONNECT_ARGS
-                        Extra arguments to pass to openconnect.
+                        Extra arguments to pass to openconnect, make sure to add quotes if it's more than one parameter.
 ```
 
 ## Example:
