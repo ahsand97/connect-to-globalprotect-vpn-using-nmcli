@@ -48,20 +48,13 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
                     uuid_of_desired_connection = conn.split(sep=":")[1]
                     print(
                         f'Connection "{connection_name}" with uuid "{uuid_of_desired_connection}" for vpn protocol'
-                        f' "gp" and vpn portal "{vpn_portal}" found, using it to connect with nmcli...'
+                        f' "gp" and vpn portal "{vpn_portal}" found, using it to connect with nmcli...\n'
                     )
                     break
             except:
                 pass
     if uuid_of_desired_connection is None:  # Create connection
         try:
-            msg: str = (
-                f'Creating connection with name "{connection_name}", vpn protocol'
-                f' "gp"{"," if vpn_os is not None else " and"} vpn gateway "{vpn_portal}"'
-            )
-            msg += f' and reported os "{vpn_os}"' if vpn_os is not None else ""
-            msg += "..."
-            print(msg)
             vpn_data: dict[str, str] = {
                 "authtype": "password",
                 "autoconnect-flags": "0",
@@ -82,21 +75,22 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
             }
             if vpn_os is not None:
                 vpn_data["reported_os"] = vpn_os
+            msg_creating_connection: str = f'Creating connection with name "{connection_name}", vpn protocol "gp"'
+            msg_creating_connection += f'{"," if vpn_os is not None else " and"} vpn gateway "{vpn_portal}"'
+            msg_creating_connection += f' and reported os "{vpn_os}"' if vpn_os is not None else ""
+            msg_creating_connection += "..."
+            print(msg_creating_connection)
+            command_to_create_connection: str = (
+                f"nmcli connection add con-name '{connection_name}' type vpn vpn-type openconnect "
+                f"vpn.data {','.join(f'{k}={v}' for k,v in vpn_data.items())}"
+            )
+            print(f'Running command: "{command_to_create_connection}"\n')
             result_of_created_connection: str = subprocess.check_output(
-                args=[
-                    "bash",
-                    "-c",
-                    (
-                        f"LANG=en nmcli connection add con-name '{connection_name}' type vpn vpn-type openconnect"
-                        f" vpn.data {','.join(f'{k}={v}' for k,v in vpn_data.items())}"
-                    ),
-                ],
-                text=True,
+                args=["bash", "-c", f"LANG=en {command_to_create_connection}"], text=True
             ).replace("\n", "")
             uuid_of_desired_connection = result_of_created_connection.split(sep="(")[1].split(sep=")")[0]
             print(
-                f'Connection "{connection_name}" successfully created, uuid of new connection:'
-                f' "{uuid_of_desired_connection}"'
+                f'Connection "{connection_name}" successfully created, uuid of new connection: {uuid_of_desired_connection}'
             )
         except Exception as e:
             print(f'An error occurred creating connection "{connection_name}", exception: {e}')
@@ -118,11 +112,11 @@ def connection_is_active(connection_name: str, connection_uuid: str) -> bool:
 
 def connect_to_vpn_using_nmcli(
     vpn_portal: str,
-    vpn_user_group: Optional[str],
+    vpn_user_groups: Optional[list[str]],
     vpn_os: Optional[str],
     connection_name: str,
     connection_uuid: str,
-    openconnect_args: Optional[str],
+    openconnect_args: Optional[list[str]],
 ) -> None:
     """Get the cookie (SAML auth) and necessary data to connect to the GlobalProtect VPN using `nmcli`"""
 
@@ -130,35 +124,21 @@ def connect_to_vpn_using_nmcli(
         """Get URL to perform SAML authentication"""
         url_for_saml_auth: str = ""
         try:
-            print("Getting URL to perform SAML authentication...")
-            vpn_user_group_: Optional[str] = vpn_user_group
-            if vpn_user_group_ is not None:
-                if len(vpn_user_group_.strip()):
-                    vpn_user_group_ = vpn_user_group_.strip()
-                    if " " in vpn_user_group_:
-                        vpn_user_group_ = vpn_user_group_.split(sep=" ")[0]
-                    elif ":" in vpn_user_group_:
-                        vpn_user_group_ = vpn_user_group_.split(sep=":")[0]
             # i.e: openconnect --non-inter --protocol=gp --usergroup=gateway --os=win portal.test.com
             command_to_obtain_url: list[str] = [
                 "openconnect",
                 "--non-inter",
                 "--protocol=gp",
-                (
-                    f"{f'--usergroup={vpn_user_group_}' if len(vpn_user_group_) else ''}"
-                    if vpn_user_group_ is not None
-                    else ""
-                ),
-                f"{f'--os={vpn_os.strip()}' if len(vpn_os.strip()) else ''}" if vpn_os is not None else "",
-                (
-                    f"{openconnect_args.strip() if len(openconnect_args.strip()) else ''}"
-                    if openconnect_args is not None
-                    else ""
-                ),
+                f"--usergroup={vpn_user_groups[0]}" if vpn_user_groups is not None and len(vpn_user_groups) else "",
+                f"--os={vpn_os}" if vpn_os is not None and len(vpn_os) else "",
+                openconnect_args[0] if openconnect_args is not None and len(openconnect_args) else "",
                 vpn_portal,
             ]
+            command_to_obtain_url_str: str = " ".join([x for x in command_to_obtain_url if len(x)])
+            print("1. Getting URL to perform SAML authentication...")
+            print(f'Running command: "{command_to_obtain_url_str}"\n')
             proc: subprocess.Popen[str] = subprocess.Popen(
-                args=["bash", "-c", f"LANG=en {' '.join([x for x in command_to_obtain_url if len(x)])}"],
+                args=["bash", "-c", f"LANG=en {command_to_obtain_url_str}"],
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -185,7 +165,7 @@ def connect_to_vpn_using_nmcli(
         cookie: str = ""
         username: str = ""
         try:
-            print("Performing SAML authentication, opening selenium browser...")
+            print("2. Performing SAML authentication, opening selenium browser...\n")
             chrome_options: webdriver.ChromeOptions = webdriver.ChromeOptions()
             chrome_options.add_argument(argument="--window-size=800,600")
             chrome_options.add_argument(argument=f"--user-data-dir={str(CONFIG_FOLDER)}")
@@ -241,41 +221,37 @@ def connect_to_vpn_using_nmcli(
         host: str = ""
         resolve: str = ""
         try:
-            print("Getting vpn secrets for nmcli...")
             # i.e: openconnect --protocol=gp --user=someuser@company.com --usergroup=gateway:prelogin-cookie --passwd-on-stdin --authenticate --os=win portal.test.com
             command_to_obtain_vpn_secrets: list[str] = [
                 "openconnect",
                 "--protocol=gp",
                 f"--user={username}",
                 (
-                    f"--usergroup={vpn_user_group}:prelogin-cookie"
-                    if vpn_user_group == "gateway"
-                    else (
-                        f"--usergroup={vpn_user_group}:portal-userauthcookie"
-                        if vpn_user_group == "portal"
+                    (
+                        f"--usergroup={vpn_user_groups[0]}:prelogin-cookie"
+                        if vpn_user_groups[0] == "gateway" and len(vpn_user_groups) == 1
                         else (
-                            f"{f'--usergroup={vpn_user_group.strip()}' if len(vpn_user_group.strip()) else ''}"
-                            if vpn_user_group is not None
-                            else ""
+                            f"--usergroup={vpn_user_groups[0]}:portal-userauthcookie"
+                            if vpn_user_groups[0] == "portal" and len(vpn_user_groups) == 1
+                            else (f"--usergroup={vpn_user_groups[1]}" if len(vpn_user_groups) == 2 else "")
                         )
                     )
+                    if vpn_user_groups is not None and len(vpn_user_groups)
+                    else ""
                 ),
                 "--passwd-on-stdin",
                 "--authenticate",
-                f"{f'--os={vpn_os.strip()}' if len(vpn_os.strip()) else ''}" if vpn_os is not None else "",
-                (
-                    f"{openconnect_args.strip() if len(openconnect_args.strip()) else ''}"
-                    if openconnect_args is not None
-                    else ""
-                ),
+                f"--os={vpn_os}" if vpn_os is not None and len(vpn_os) else "",
+                openconnect_args[1] if openconnect_args is not None and len(openconnect_args) == 2 else "",
                 vpn_portal,
             ]
+            command_to_obtain_vpn_secrets_str: str = (
+                f"echo {prelogin_cookie} | {' '.join([x for x in command_to_obtain_vpn_secrets if len(x)])}"
+            )
+            print("3. Getting vpn secrets for nmcli...")
+            print(f'Running command: "{command_to_obtain_vpn_secrets_str}"\n')
             secrets: subprocess.Popen[str] = subprocess.Popen(
-                args=[
-                    "bash",
-                    "-c",
-                    f"echo {prelogin_cookie} | LANG=en {' '.join([x for x in command_to_obtain_vpn_secrets if len(x)])}",
-                ],
+                args=["bash", "-c", f"export LANG=en && {command_to_obtain_vpn_secrets_str}"],
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -300,7 +276,6 @@ def connect_to_vpn_using_nmcli(
             return cookie, fingerprint, host, resolve
 
     def connect_using_nmcli(cookie: str, fingerprint: str, host: str, resolve: str) -> None:
-        print(f'Connecting to network "{connection_name}" with uuid "{connection_uuid}" using nmcli...')
         path_of_file: str = ""
         with tempfile.NamedTemporaryFile(mode="w", prefix=APP_NAME, delete=False) as tf:
             path_of_file = tf.name
@@ -309,9 +284,10 @@ def connect_to_vpn_using_nmcli(
             tf.write(f"vpn.secrets.gateway:{host}\n")
             tf.write(f"vpn.secrets.resolve:{resolve}")
         try:
-            subprocess.check_call(
-                args=["bash", "-c", f"LANG=en nmcli connection up uuid {connection_uuid} passwd-file {path_of_file}"]
-            )
+            command_to_connect_to_vpn: str = f"nmcli connection up uuid {connection_uuid} passwd-file {path_of_file}"
+            print(f'4. Connecting to network "{connection_name}" with uuid "{connection_uuid}" using nmcli...')
+            print(f'Running command: "{command_to_connect_to_vpn}"\n')
+            subprocess.check_call(args=["bash", "-c", f"LANG=en {command_to_connect_to_vpn}"])
         except Exception as e:
             print(f'An error occurred connecting to "{connection_name}" with uuid "{connection_uuid}", exception: {e}')
             traceback.print_tb(tb=e.__traceback__)
@@ -333,15 +309,15 @@ def connect_to_vpn_using_nmcli(
     connect_using_nmcli(cookie=cookie, fingerprint=fingerprint, host=host, resolve=resolve)
 
 
-class Arguments(NamedTuple):
+class CLIArguments(NamedTuple):
     connection_name: str
     vpn_portal_gateway: str
-    vpn_user_group: Optional[str]
+    vpn_user_groups: Optional[list[str]]
     vpn_os: Optional[str]
-    openconnect_args: Optional[str]
+    openconnect_args: Optional[list[str]]
 
 
-def parse_cli_arguments() -> Arguments:
+def parse_cli_arguments() -> CLIArguments:
     # CLI arguments
     parser: ArgumentParser = ArgumentParser(
         prog=APP_NAME,
@@ -358,8 +334,18 @@ def parse_cli_arguments() -> Arguments:
         "--vpn-portal", "--vpn-gateway", help="Address of the portal/gateway of the Global Protect VPN.", required=True
     )
     parser.add_argument(
-        "--vpn-user-group",
-        help="Usergroup to pass to openconnect's --usergroup parameter. Options can be: 'portal', 'gateway'.",
+        "--vpn-user-groups",
+        help=(
+            "Usergroups to pass to openconnect's --usergroup parameter. It can be a single value or 2 values. "
+            "The first value is used when using openconnect to get the URL to perform the SAML authentication and "
+            "the second one is used when using openconnect to perform the VPN authentication. "
+            "If the value for this parameter is 'gateway' then it's gonna be used as the usergroup to get the URL for SAML authentication "
+            "and for the VPN authentication the usergroup is gonna be 'gateway:prelogin-cookie'. "
+            "If the value for this parameter is 'portal' then it's gonna be used as the usergroup to get the URL for SAML authentication "
+            "and for the VPN authentication the usergroup is gonna be 'portal:portal-userauthcookie'."
+        ),
+        nargs="*",
+        metavar=("VPN_USER_GROUP_GET_URL_SAML", "VPN_USER_GROUP_CONNECT_VPN"),
     )
     parser.add_argument(
         "--vpn-os",
@@ -367,30 +353,52 @@ def parse_cli_arguments() -> Arguments:
     )
     parser.add_argument(
         "--openconnect-args",
-        help="Extra arguments to pass to openconnect, make sure to add quotes if it's more than one parameter.",
+        help=(
+            "Extra arguments to pass to openconnect. It can be a single value or 2 values, make sure to add quotes to distinguish from the normal arguments of the application. "
+            "The first value contains the extra openconnect arguments used to get the URL to perform the SAML authentication and "
+            "the second one contains the extra openconnect arguments used to perform the VPN authentication. "
+            'Example: --openconnect-args "--extra-arg=value --another-arg=value" "--extra-arg=value"'
+        ),
+        nargs="*",
+        metavar=("OPENCONNECT_ARGS_GET_URL_SAML", "OPENCONNECT_ARGS_CONNECT_VPN"),
     )
 
     # Parse arguments
     args: Namespace = parser.parse_args()
-    return Arguments(
+    cli_arguments: CLIArguments = CLIArguments(
         connection_name=args.connection_name,
         vpn_portal_gateway=args.vpn_portal,
-        vpn_user_group=args.vpn_user_group,
-        vpn_os=args.vpn_os,
-        openconnect_args=args.openconnect_args,
+        vpn_user_groups=(
+            [x.strip() for x in cast(list[str], args.vpn_user_groups) if len(x.strip())]
+            if args.vpn_user_groups is not None and len(args.vpn_user_groups)
+            else None
+        ),
+        vpn_os=args.vpn_os.strip() if args.vpn_os is not None and len(args.vpn_os.strip()) else None,
+        openconnect_args=(
+            [x.strip() for x in cast(list[str], args.openconnect_args) if len(x.strip())]
+            if args.openconnect_args is not None and len(args.openconnect_args)
+            else None
+        ),
     )
+    if cli_arguments.vpn_user_groups is not None and len(cli_arguments.vpn_user_groups) > 2:
+        parser.error(message="The optional parameter --vpn-user-groups can only contain one or two values.")
+    if cli_arguments.openconnect_args is not None and len(cli_arguments.openconnect_args) > 2:
+        parser.error(message="The optional parameter --openconnect-args can only contain one or two values.")
+    if cli_arguments.openconnect_args is not None:
+        for openconnect_args in cli_arguments.openconnect_args:
+            if any(
+                x in openconnect_args for x in ("usergroup ", "os ", "--usergroup ", "--os ", "--usergroup=", "--os=")
+            ):
+                parser.error(
+                    message="The value/s for the optional parameter --openconnect-args can't contain the arguments '--usergroup' or '--os' since those arguments can be defined as normal arguments of the application."
+                )
+    return cli_arguments
 
 
 def main() -> None:
     """Main function"""
     # Get arguments from command line
-    arguments: Arguments = parse_cli_arguments()
-    if arguments.openconnect_args is not None:
-        if any(x in arguments.openconnect_args for x in ("--usergroup", "--os")):
-            print(
-                "The parameters --usergroup and --os can't be part of the parameter --openconnect-args, they can be specified as normal parameters."
-            )
-            return
+    arguments: CLIArguments = parse_cli_arguments()
 
     # Check if connection exists if not create it
     uuid_of_connection: Optional[str] = create_connection(
@@ -408,7 +416,7 @@ def main() -> None:
     # Do SAML auth and get cookie and necessary vpn secrets to connect to the VPN via nmcli
     connect_to_vpn_using_nmcli(
         vpn_portal=arguments.vpn_portal_gateway,
-        vpn_user_group=arguments.vpn_user_group,
+        vpn_user_groups=arguments.vpn_user_groups,
         vpn_os=arguments.vpn_os,
         connection_name=arguments.connection_name,
         connection_uuid=uuid_of_connection,

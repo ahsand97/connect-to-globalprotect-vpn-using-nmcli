@@ -15,7 +15,8 @@ python -m pip install -r requirements.txt
 Then the script can be used, this is the help message:
 
 ```
-usage: connect_to_global_protect_vpn_using_nmcli [-h] --connection-name CONNECTION_NAME --vpn-portal VPN_PORTAL [--vpn-user-group VPN_USER_GROUP] [--vpn-os VPN_OS] [--openconnect-args OPENCONNECT_ARGS]
+usage: connect_to_global_protect_vpn_using_nmcli [-h] --connection-name CONNECTION_NAME --vpn-portal VPN_PORTAL [--vpn-user-groups [VPN_USER_GROUP_GET_URL_SAML [VPN_USER_GROUP_CONNECT_VPN ...]]] [--vpn-os VPN_OS]
+                                                 [--openconnect-args [OPENCONNECT_ARGS_GET_URL_SAML [OPENCONNECT_ARGS_CONNECT_VPN ...]]]
 
 Connect to a Glopal Protect VPN connection that requires SAML authenticaton using nmcli and openconnect.
 
@@ -25,17 +26,22 @@ options:
                         Name for the connection to add with nmcli if it's not already created.
   --vpn-portal VPN_PORTAL, --vpn-gateway VPN_PORTAL
                         Address of the portal/gateway of the Global Protect VPN.
-  --vpn-user-group VPN_USER_GROUP
-                        Usergroup to pass to openconnect's --usergroup parameter. Options can be: 'portal', 'gateway'.
+  --vpn-user-groups [VPN_USER_GROUP_GET_URL_SAML [VPN_USER_GROUP_CONNECT_VPN ...]]
+                        Usergroups to pass to openconnect's --usergroup parameter. It can be a single value or 2 values. The first value is used when using openconnect to get the URL to perform the SAML
+                        authentication and the second one is used when using openconnect to perform the VPN authentication. If the value for this parameter is 'gateway' then it's gonna be used as the usergroup to
+                        get the URL for SAML authentication and for the VPN authentication the usergroup is gonna be 'gateway:prelogin-cookie'. If the value for this parameter is 'portal' then it's gonna be used
+                        as the usergroup to get the URL for SAML authentication and for the VPN authentication the usergroup is gonna be 'portal:portal-userauthcookie'.
   --vpn-os VPN_OS       OS to pass to openconnect's --os parameter. Options can be: 'linux', 'linux-64', 'win', 'mac-intel', 'android', 'apple-ios'.
-  --openconnect-args OPENCONNECT_ARGS
-                        Extra arguments to pass to openconnect, make sure to add quotes if it's more than one parameter.
+  --openconnect-args [OPENCONNECT_ARGS_GET_URL_SAML [OPENCONNECT_ARGS_CONNECT_VPN ...]]
+                        Extra arguments to pass to openconnect. It can be a single value or 2 values, make sure to add quotes to distinguish from the normal arguments of the application. The first value contains
+                        the extra openconnect arguments used to get the URL to perform the SAML authentication and the second one contains the extra openconnect arguments used to perform the VPN authentication.
+                        Example: --openconnect-args "--extra-arg=value --another-arg=value" "--extra-arg=value"
 ```
 
 ## Example:
 
 ```bash
-python connect_to_global_protect_vpn_using_nmcli.py --conection-name "Test GP VPN" --vpn-portal "portal.testvpn.com" --vpn-user-group "portal" --vpn-os "linux"
+python connect_to_global_protect_vpn_using_nmcli.py --conection-name "Test GP VPN" --vpn-portal "portal.testvpn.com" --vpn-user-groups "portal" --vpn-os "linux"
 ```
 
 The script will automatically check if exists a connection with the name "Test GP VPN" configured for a VPN with the protocol "gp" (GlopalProtect) and for the portal specified, if the connection exists already then it is used to stablish the connection, if not, the script will automatically create a new connection with the parameters specified and use it to connect to the VPN.
