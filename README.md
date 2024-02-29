@@ -50,8 +50,7 @@ After creating/getting the connection that will be used to connect to the VPN, t
 
 Example of output of an existing connection successfully connected:
 
-![image](https://github.com/ahsand97/connect-to-globalprotect-vpn-using-nmcli/assets/32344641/92634304-cf52-49aa-af67-d8e23c7c1762)
-
+![image](https://github.com/ahsand97/connect-to-globalprotect-vpn-using-nmcli/assets/32344641/ac654464-4172-4186-a7ea-7cd4427dfcfd)
 ![Screenshot_20231123_125230](https://github.com/ahsand97/connect-to-globalprotect-using-nmcli/assets/32344641/956e3bec-21b7-40e9-85c4-d4d968de2672)
 
 To delete the cache and do the SAML authentication again, the folder `~/.config/connect_to_global_protect_vpn_using_nmcli` can be removed.
