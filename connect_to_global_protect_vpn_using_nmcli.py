@@ -1,5 +1,4 @@
 import subprocess
-import tempfile
 import traceback
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -47,8 +46,8 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
                 if vpn_info_dict["gateway"] == vpn_portal and vpn_info_dict["protocol"] == "gp":
                     uuid_of_desired_connection = conn.split(sep=":")[1]
                     print(
-                        f'Connection "{connection_name}" with uuid "{uuid_of_desired_connection}" for vpn protocol'
-                        f' "gp" and vpn portal "{vpn_portal}" found, using it to connect with nmcli...\n'
+                        f'\nVPN connection "{connection_name}" with uuid "{uuid_of_desired_connection}", vpn protocol '
+                        f'"gp" and vpn portal "{vpn_portal}" found, using it to connect with nmcli...\n'
                     )
                     break
             except:
@@ -75,11 +74,11 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
             }
             if vpn_os is not None:
                 vpn_data["reported_os"] = vpn_os
-            msg_creating_connection: str = f'Creating connection with name "{connection_name}", vpn protocol "gp"'
+            msg_creating_connection: str = f'Creating VPN connection with name "{connection_name}", vpn protocol "gp"'
             msg_creating_connection += f'{"," if vpn_os is not None else " and"} vpn gateway "{vpn_portal}"'
             msg_creating_connection += f' and reported os "{vpn_os}"' if vpn_os is not None else ""
             msg_creating_connection += "..."
-            print(msg_creating_connection)
+            print(f"\n{msg_creating_connection}")
             command_to_create_connection: str = (
                 f"nmcli connection add con-name '{connection_name}' type vpn vpn-type openconnect "
                 f"vpn.data {','.join(f'{k}={v}' for k,v in vpn_data.items())}"
@@ -90,7 +89,7 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
             ).replace("\n", "")
             uuid_of_desired_connection = result_of_created_connection.split(sep="(")[1].split(sep=")")[0]
             print(
-                f'Connection "{connection_name}" successfully created, uuid of new connection: {uuid_of_desired_connection}'
+                f'VPN connection "{connection_name}" successfully created, uuid of new connection: "{uuid_of_desired_connection}"\n'
             )
         except Exception as e:
             print(f'An error occurred creating connection "{connection_name}", exception: {e}')
@@ -257,16 +256,26 @@ def connect_to_vpn_using_nmcli(
                 stderr=subprocess.STDOUT,
             )
             secrets.wait()
+            vpn_secrets_dict: dict[str, str] = {}
             for line in cast(IO[str], secrets.stdout):
                 line = line.replace("\n", "")
-                if line.startswith("COOKIE"):
-                    cookie = line.split(sep="=", maxsplit=1)[1].replace("'", "")
-                elif line.startswith("FINGERPRINT"):
-                    fingerprint = line.split(sep="=", maxsplit=1)[1].replace("'", "")
-                elif line.startswith("HOST"):
-                    host = line.split(sep="=", maxsplit=1)[1].replace("'", "")
-                elif line.startswith("RESOLVE"):
-                    resolve = line.split(sep="=", maxsplit=1)[1].replace("'", "")
+                properties_to_search: list[str] = ["COOKIE", "FINGERPRINT", "HOST", "RESOLVE", "CONNECT_URL"]
+                for property_ in properties_to_search:
+                    if not line.startswith(property_):
+                        continue
+                    value_of_property: str = line.split(sep="=", maxsplit=1)[1].replace("'", "")
+                    vpn_secrets_dict[property_] = value_of_property
+            if len(vpn_secrets_dict):
+                print("  Secrets Obtained: ")
+                for key, value in vpn_secrets_dict.items():
+                    print(f"    {key}={value}")
+                try:
+                    cookie = vpn_secrets_dict["COOKIE"]
+                    fingerprint = vpn_secrets_dict["FINGERPRINT"]
+                    host = vpn_secrets_dict["HOST"]
+                    resolve = vpn_secrets_dict["RESOLVE"]
+                except KeyError:
+                    pass
         except Exception as e:
             print(f"An error occurred getting the vpn secrets for nmcli, exception: {e}")
             traceback.print_tb(tb=e.__traceback__)
@@ -276,23 +285,23 @@ def connect_to_vpn_using_nmcli(
             return cookie, fingerprint, host, resolve
 
     def connect_using_nmcli(cookie: str, fingerprint: str, host: str, resolve: str) -> None:
-        path_of_file: str = ""
-        with tempfile.NamedTemporaryFile(mode="w", prefix=APP_NAME, delete=False) as tf:
-            path_of_file = tf.name
-            tf.write(f"vpn.secrets.cookie:{cookie}\n")
-            tf.write(f"vpn.secrets.gwcert:{fingerprint}\n")
-            tf.write(f"vpn.secrets.gateway:{host}\n")
-            tf.write(f"vpn.secrets.resolve:{resolve}")
         try:
-            command_to_connect_to_vpn: str = f"nmcli connection up uuid {connection_uuid} passwd-file {path_of_file}"
-            print(f'4. Connecting to network "{connection_name}" with uuid "{connection_uuid}" using nmcli...')
+            vpn_secrets_for_nmcli: list[str] = [
+                f"vpn.secrets.cookie:{cookie}",
+                f"vpn.secrets.gwcert:{fingerprint}",
+                f"vpn.secrets.gateway:{host}",
+                f"vpn.secrets.resolve:{resolve}",
+            ]
+            text_with_vpn_secrets_for_nmcli: str = "\\n".join(vpn_secrets_for_nmcli)
+            command_to_connect_to_vpn: str = (
+                f"printf '{text_with_vpn_secrets_for_nmcli.replace('%', '%%')}' | nmcli connection up uuid '{connection_uuid}' passwd-file /dev/stdin"
+            )
+            print(f'\n4. Connecting to VPN "{connection_name}" with uuid "{connection_uuid}" using nmcli...')
             print(f'Running command: "{command_to_connect_to_vpn}"\n')
-            subprocess.check_call(args=["bash", "-c", f"LANG=en {command_to_connect_to_vpn}"])
+            subprocess.check_call(args=["bash", "-c", f"export LANG=en && {command_to_connect_to_vpn}"])
         except Exception as e:
             print(f'An error occurred connecting to "{connection_name}" with uuid "{connection_uuid}", exception: {e}')
             traceback.print_tb(tb=e.__traceback__)
-        finally:
-            Path(path_of_file).unlink(missing_ok=True)
 
     url_for_saml_auth: str = get_url_for_saml_authentication()
     if not len(url_for_saml_auth):
