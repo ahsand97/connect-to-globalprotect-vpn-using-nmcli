@@ -348,10 +348,10 @@ def parse_cli_arguments() -> CLIArguments:
             "Usergroups to pass to openconnect's --usergroup parameter. It can be a single value or 2 values. "
             "The first value is used when using openconnect to get the URL to perform the SAML authentication and "
             "the second one is used when using openconnect to perform the VPN authentication. "
-            "If the value for this parameter is 'gateway' then it's gonna be used as the usergroup to get the URL for SAML authentication "
-            "and for the VPN authentication the usergroup is gonna be 'gateway:prelogin-cookie'. "
-            "If the value for this parameter is 'portal' then it's gonna be used as the usergroup to get the URL for SAML authentication "
-            "and for the VPN authentication the usergroup is gonna be 'portal:portal-userauthcookie'."
+            "If the value for this parameter is only 'gateway' then 'gateway' will be used as the --usergroup parameter to get the URL for SAML authentication "
+            "and for the VPN authentication the --usergroup parameter will be 'gateway:prelogin-cookie'. "
+            "If the value for this parameter is only 'portal' then 'portal' will be used as the --usergroup parameter to get the URL for SAML authentication "
+            "and for the VPN authentication the --usergroup parameter will be 'portal:portal-userauthcookie'."
         ),
         nargs="*",
         metavar=("VPN_USER_GROUP_GET_URL_SAML", "VPN_USER_GROUP_CONNECT_VPN"),
