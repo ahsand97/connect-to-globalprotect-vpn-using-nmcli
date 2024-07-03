@@ -21,7 +21,7 @@ usage: connect_to_global_protect_vpn_using_nmcli [-h] --connection-name CONNECTI
                                                  [--vpn-os VPN_OS]
                                                  [--openconnect-args [OPENCONNECT_ARGS_GET_URL_SAML [OPENCONNECT_ARGS_CONNECT_VPN ...]]]
 
-Connect to a Glopal Protect VPN connection that requires SAML authenticaton using nmcli and
+Connect to a Global Protect VPN connection that requires SAML authentication using nmcli and
 openconnect.
 
 options:
@@ -60,10 +60,10 @@ options:
 ## Example:
 
 ```bash
-python connect_to_global_protect_vpn_using_nmcli.py --conection-name "Test GP VPN" --vpn-portal "portal.testvpn.com" --vpn-user-groups "portal" --vpn-os "linux"
+python connect_to_global_protect_vpn_using_nmcli.py --connection-name "Test GP VPN" --vpn-portal "portal.testvpn.com" --vpn-user-groups "portal" --vpn-os "linux"
 ```
 
-The script will automatically check if exists a connection with the name "Test GP VPN" configured for a VPN with the protocol "gp" (GlopalProtect) and for the portal specified, if the connection exists already then it is used to stablish the connection, if not, the script will automatically create a new connection with the parameters specified and use it to connect to the VPN.
+The script will automatically check if exists a connection with the name "Test GP VPN" configured for a VPN with the protocol "gp" (GlopalProtect) and for the portal specified, if the connection exists already then it is used to establish the connection, if not, the script will automatically create a new connection with the parameters specified and use it to connect to the VPN.
 
 After creating/getting the connection that will be used to connect to the VPN, then the script will open a Selenium browser to perform the SAML authentication and get the necessary prelogin cookie and username to get the vpn secrets to then connect  to the VPN via `nmcli`.
 
