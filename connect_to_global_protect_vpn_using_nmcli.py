@@ -331,7 +331,7 @@ def parse_cli_arguments() -> CLIArguments:
     parser: ArgumentParser = ArgumentParser(
         prog=APP_NAME,
         description=(
-            "Connect to a Glopal Protect VPN connection that requires SAML authenticaton using nmcli and openconnect."
+            "Connect to a Global Protect VPN connection that requires SAML authenticaton using nmcli and openconnect."
         ),
     )
     parser.add_argument(
