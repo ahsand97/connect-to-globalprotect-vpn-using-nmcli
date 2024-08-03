@@ -1,4 +1,4 @@
-# Connect to a Glopal Protect VPN that requires SAML authentication using NetworkManager and openconnect
+# Connect to a Global Protect VPN that requires SAML authentication using NetworkManager and openconnect
 
 This application allows to create and connect to a Global Protect VPN connection that requires SAML authentication using `nmcli` (NetworkManager) and `openconnect`.
 
@@ -63,7 +63,7 @@ options:
 python connect_to_global_protect_vpn_using_nmcli.py --connection-name "Test GP VPN" --vpn-portal "portal.testvpn.com" --vpn-user-groups "portal" --vpn-os "linux"
 ```
 
-The script will automatically check if exists a connection with the name "Test GP VPN" configured for a VPN with the protocol "gp" (GlopalProtect) and for the portal specified, if the connection exists already then it is used to establish the connection, if not, the script will automatically create a new connection with the parameters specified and use it to connect to the VPN.
+The script will automatically check if exists a connection with the name "Test GP VPN" configured for a VPN with the protocol "gp" (GlobalProtect) and for the portal specified, if the connection exists already then it is used to establish the connection, if not, the script will automatically create a new connection with the parameters specified and use it to connect to the VPN.
 
 After creating/getting the connection that will be used to connect to the VPN, then the script will open a Selenium browser to perform the SAML authentication and get the necessary prelogin cookie and username to get the vpn secrets to then connect  to the VPN via `nmcli`.
 
