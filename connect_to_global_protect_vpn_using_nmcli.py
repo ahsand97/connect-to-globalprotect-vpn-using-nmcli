@@ -426,13 +426,17 @@ def parse_cli_arguments() -> CLIArguments:
     group: _MutuallyExclusiveGroup = parser.add_mutually_exclusive_group(required=True)
     _ = group.add_argument(
         "--connection-name",
-        help="Name for the connection to add with NetworkManager (nmcli) if it's not already created.",
+        help=(
+            "Name of the VPN connection to use to stablish the connection, if it doesn't exist then it will be created"
+            " with NetworkManager. If the parameter --connection-uuid was provided then this one should not be"
+            " present."
+        ),
     )
     _ = group.add_argument(
         "--connection-uuid",
         help=(
             "Connection UUID for an already existing connection to use to stablish the VPN connection with"
-            " NetworkManager."
+            " NetworkManager. If the parameter --connection-name was provided then this one should not be present."
         ),
     )
     _ = parser.add_argument(
