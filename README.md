@@ -24,9 +24,10 @@ Connect to a Global Protect VPN connection that requires SAML authenticaton usin
 options:
   -h, --help            show this help message and exit
   --connection-name CONNECTION_NAME
-                        Name for the connection to add with NetworkManager (nmcli) if it's not already created.
+                        Name of the VPN connection to use to stablish the connection, if it doesn't exist then it will be created with NetworkManager. If the parameter --connection-uuid was provided then this one should not be
+                        present.
   --connection-uuid CONNECTION_UUID
-                        Connection UUID for an already existing connection to use to stablish the VPN connection with NetworkManager.
+                        Connection UUID for an already existing connection to use to stablish the VPN connection with NetworkManager. If the parameter --connection-name was provided then this one should not be present.
   --vpn-portal, --vpn-gateway VPN_PORTAL
                         Address of the portal/gateway of the Global Protect VPN.
   --vpn-user-groups [VPN_USER_GROUP_GET_URL_SAML [VPN_USER_GROUP_CONNECT_VPN ...]]
