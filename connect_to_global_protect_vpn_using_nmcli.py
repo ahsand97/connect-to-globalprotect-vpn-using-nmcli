@@ -122,7 +122,7 @@ def get_connection_info_based_on_uuid(connection_uuid: str, vpn_portal: str) -> 
         if not len(conn):
             continue
         if conn.split(sep=":")[1] == connection_uuid:
-            # The connection with the specifiec uuid was found, we check if its vpn configuration (protocol and gateway)
+            # The connection with the specified uuid was found, we check if its vpn configuration (protocol and gateway)
             # to see if the connection has the correct protocol and gateway to then return the connection info to connect to it.
             try:
                 vpn_info: list[str] = (
