@@ -15,46 +15,30 @@ python -m pip install -r requirements.txt
 Then the script can be used, this is the help message:
 
 ```
-usage: connect_to_global_protect_vpn_using_nmcli [-h] --connection-name CONNECTION_NAME
-                                                 --vpn-portal VPN_PORTAL
-                                                 [--vpn-user-groups [VPN_USER_GROUP_GET_URL_SAML [VPN_USER_GROUP_CONNECT_VPN ...]]]
-                                                 [--vpn-os VPN_OS]
+usage: connect_to_global_protect_vpn_using_nmcli [-h] (--connection-name CONNECTION_NAME | --connection-uuid CONNECTION_UUID) --vpn-portal VPN_PORTAL
+                                                 [--vpn-user-groups [VPN_USER_GROUP_GET_URL_SAML [VPN_USER_GROUP_CONNECT_VPN ...]]] [--vpn-os VPN_OS]
                                                  [--openconnect-args [OPENCONNECT_ARGS_GET_URL_SAML [OPENCONNECT_ARGS_CONNECT_VPN ...]]]
 
-Connect to a Global Protect VPN connection that requires SAML authentication using nmcli and
-openconnect.
+Connect to a Global Protect VPN connection that requires SAML authenticaton using NetworkManager (nmcli) and openconnect.
 
 options:
   -h, --help            show this help message and exit
   --connection-name CONNECTION_NAME
-                        Name for the connection to add with nmcli if it's not already
-                        created.
-  --vpn-portal VPN_PORTAL, --vpn-gateway VPN_PORTAL
+                        Name for the connection to add with NetworkManager (nmcli) if it's not already created.
+  --connection-uuid CONNECTION_UUID
+                        Connection UUID for an already existing connection to use to stablish the VPN connection with NetworkManager.
+  --vpn-portal, --vpn-gateway VPN_PORTAL
                         Address of the portal/gateway of the Global Protect VPN.
   --vpn-user-groups [VPN_USER_GROUP_GET_URL_SAML [VPN_USER_GROUP_CONNECT_VPN ...]]
-                        Usergroups to pass to openconnect's --usergroup parameter. It can be
-                        a single value or 2 values. The first value is used when using
-                        openconnect to get the URL to perform the SAML authentication and
-                        the second one is used when using openconnect to perform the VPN
-                        authentication. If the value for this parameter is only 'gateway'
-                        then 'gateway' will be used as the --usergroup parameter to get the
-                        URL for SAML authentication and for the VPN authentication the
-                        --usergroup parameter will be 'gateway:prelogin-cookie'. If the
-                        value for this parameter is only 'portal' then 'portal' will be used
-                        as the --usergroup parameter to get the URL for SAML authentication
-                        and for the VPN authentication the --usergroup parameter will be
-                        'portal:portal-userauthcookie'.
-  --vpn-os VPN_OS       OS to pass to openconnect's --os parameter. Options can be: 'linux',
-                        'linux-64', 'win', 'mac-intel', 'android', 'apple-ios'.
+                        Usergroups to pass to openconnect's --usergroup parameter. It can be a single value or 2 values. The first value is used when using openconnect to get the URL to perform the SAML authentication and the
+                        second one is used when using openconnect to perform the VPN authentication. If the value for this parameter is only 'gateway' then 'gateway' will be used as the --usergroup parameter to get the URL for SAML
+                        authentication and for the VPN authentication the --usergroup parameter will be 'gateway:prelogin-cookie'. If the value for this parameter is only 'portal' then 'portal' will be used as the --usergroup
+                        parameter to get the URL for SAML authentication and for the VPN authentication the --usergroup parameter will be 'portal:portal-userauthcookie'.
+  --vpn-os VPN_OS       OS to pass to openconnect's --os parameter. Options can be: 'linux', 'linux-64', 'win', 'mac-intel', 'android', 'apple-ios'.
   --openconnect-args [OPENCONNECT_ARGS_GET_URL_SAML [OPENCONNECT_ARGS_CONNECT_VPN ...]]
-                        Extra arguments to pass to openconnect. It can be a single value or
-                        2 values, make sure to add quotes to distinguish from the normal
-                        arguments of the application. The first value contains the extra
-                        openconnect arguments used to get the URL to perform the SAML
-                        authentication and the second one contains the extra openconnect
-                        arguments used to perform the VPN authentication. Example:
-                        --openconnect-args "--extra-arg=value --another-arg=value" "--extra-
-                        arg=value"
+                        Extra arguments to pass to openconnect. It can be a single value or 2 values, make sure to add quotes to distinguish from the normal arguments of the application. The first value contains the extra
+                        openconnect arguments used to get the URL to perform the SAML authentication and the second one contains the extra openconnect arguments used to perform the VPN authentication. Example: --openconnect-args "
+                        --extra-arg=value --another-arg=value" "--extra-arg=value"
 ```
 
 ## Example:
