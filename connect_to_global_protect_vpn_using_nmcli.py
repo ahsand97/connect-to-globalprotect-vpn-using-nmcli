@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import subprocess
 import traceback
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace, _MutuallyExclusiveGroup  # pyright: ignore[reportPrivateUsage]
 from pathlib import Path
 from typing import IO, NamedTuple, Optional, cast
 from xml.etree import ElementTree as ET
@@ -11,8 +13,13 @@ from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.support.wait import WebDriverWait
 
 
-def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[str]) -> Optional[str]:
-    """Check if connection exists with `nmcli` considering the connection protocol (it should be gp), name and vpn portal specified via CLI"""
+def get_or_create_connection_info_based_on_connection_name(
+    connection_name: str, vpn_portal: str, vpn_os: Optional[str]
+) -> Optional[ConnectionInfo]:
+    """
+    Check if connection exists (or create it) with NetworkManager `nmcli` considering the connection name,
+    protocol (it should be `gp`), and vpn portal specified via CLI and return the `ConnectionInfo`.
+    """
     uuid_of_desired_connection: Optional[str] = None
     connections: list[str] = subprocess.check_output(
         args=["bash", "-c", "nmcli --terse --fields NAME,UUID connection"], text=True
@@ -22,7 +29,7 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
             continue
         if conn.split(sep=":")[0] == connection_name:
             # There's already a connection with the same name, we check if its vpn configuration (protocol and gateway)
-            # to see if the connection already exists and take its uuid to connect to it
+            # to see if the connection already exists and take its uuid to connect to it.
             try:
                 vpn_info: list[str] = (
                     subprocess.check_output(
@@ -47,12 +54,12 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
                     uuid_of_desired_connection = conn.split(sep=":")[1]
                     print(
                         f'\nVPN connection "{connection_name}" with uuid "{uuid_of_desired_connection}", vpn protocol '
-                        f'"gp" and vpn portal "{vpn_portal}" found, using it to connect with nmcli...\n'
+                        + f'"gp" and vpn portal "{vpn_portal}" found, using it to connect with nmcli...\n'
                     )
                     break
             except:
                 pass
-    if uuid_of_desired_connection is None:  # Create connection
+    if uuid_of_desired_connection is None:  # Create connection since it didn't exist.
         try:
             vpn_data: dict[str, str] = {
                 "authtype": "password",
@@ -89,22 +96,81 @@ def create_connection(connection_name: str, vpn_portal: str, vpn_os: Optional[st
             ).replace("\n", "")
             uuid_of_desired_connection = result_of_created_connection.split(sep="(")[1].split(sep=")")[0]
             print(
-                f'VPN connection "{connection_name}" successfully created, uuid of new connection: "{uuid_of_desired_connection}"\n'
+                f'VPN connection "{connection_name}" successfully created, uuid of new connection:'
+                + f' "{uuid_of_desired_connection}"\n'
             )
         except Exception as e:
             print(f'An error occurred creating connection "{connection_name}", exception: {e}')
             traceback.print_tb(tb=e.__traceback__)
-    return uuid_of_desired_connection
+    return (
+        ConnectionInfo(connection_name=connection_name, connection_uuid=uuid_of_desired_connection)
+        if uuid_of_desired_connection is not None
+        else None
+    )
 
 
-def connection_is_active(connection_name: str, connection_uuid: str) -> bool:
+def get_connection_info_based_on_uuid(connection_uuid: str, vpn_portal: str) -> Optional[ConnectionInfo]:
+    """
+    Check if connection exists with NetworkManager `nmcli` considering the connection uuid,
+    protocol (it should be `gp`), and vpn portal specified via CLI and return the `ConnectionInfo` if exists else `None`.
+    """
+    name_of_connection: Optional[str] = None
+    connections: list[str] = subprocess.check_output(
+        args=["bash", "-c", "nmcli --terse --fields NAME,UUID connection"], text=True
+    ).splitlines()
+    for conn in connections:
+        if not len(conn):
+            continue
+        if conn.split(sep=":")[1] == connection_uuid:
+            # The connection with the specifiec uuid was found, we check if its vpn configuration (protocol and gateway)
+            # to see if the connection has the correct protocol and gateway to then return the connection info to connect to it.
+            try:
+                vpn_info: list[str] = (
+                    subprocess.check_output(
+                        args=[
+                            "bash",
+                            "-c",
+                            f"nmcli --terse connection show {conn.split(sep=':')[1]} | grep 'vpn.data'",
+                        ],
+                        text=True,
+                    )
+                    .split(sep=":", maxsplit=1)[1]
+                    .split(sep=",")
+                )
+                vpn_info_dict: dict[str, str] = {}
+                for info in vpn_info:
+                    key: str = info.split(sep="=", maxsplit=1)[0].strip()
+                    value: str = info.split(sep="=", maxsplit=1)[1].strip()
+                    vpn_info_dict[key] = value
+                if not {"gateway", "protocol"} <= set(vpn_info_dict):
+                    continue
+                if vpn_info_dict["gateway"] == vpn_portal and vpn_info_dict["protocol"] == "gp":
+                    name_of_connection = conn.split(sep=":")[0]
+                    print(
+                        f'\nVPN connection "{name_of_connection}" with uuid "{connection_uuid}", vpn protocol '
+                        + f'"gp" and vpn portal "{vpn_portal}" found, using it to connect with nmcli...\n'
+                    )
+                    break
+            except:
+                pass
+    return (
+        ConnectionInfo(connection_name=name_of_connection, connection_uuid=connection_uuid)
+        if name_of_connection is not None
+        else None
+    )
+
+
+def check_if_connection_is_active(connection_info: ConnectionInfo) -> bool:
     """Check if the connection with `connection_name` and `connection_uuid` is already connected"""
     active_connections: list[str] = subprocess.check_output(
         args=["bash", "-c", "nmcli --terse --fields UUID connection show --active"], text=True
     ).splitlines()
     for active_connection in active_connections:
-        if active_connection == connection_uuid:
-            print(f'The connection "{connection_name}" with uuid "{connection_uuid}" is already active...')
+        if active_connection == connection_info.connection_uuid:
+            print(
+                f'The connection "{connection_info.connection_name}" with uuid "{connection_info.connection_uuid}" is'
+                + " already active..."
+            )
             return True
     return False
 
@@ -113,8 +179,7 @@ def connect_to_vpn_using_nmcli(
     vpn_portal: str,
     vpn_user_groups: Optional[list[str]],
     vpn_os: Optional[str],
-    connection_name: str,
-    connection_uuid: str,
+    connection_info: ConnectionInfo,
     openconnect_args: Optional[list[str]],
 ) -> None:
     """Get the cookie (SAML auth) and necessary data to connect to the GlobalProtect VPN using `nmcli`"""
@@ -142,7 +207,7 @@ def connect_to_vpn_using_nmcli(
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
-            proc.wait()
+            _ = proc.wait()
             if proc.stdout is not None:
                 for line in proc.stdout:
                     if not "SAML REDIRECT" in line:
@@ -166,15 +231,25 @@ def connect_to_vpn_using_nmcli(
         try:
             print("2. Performing SAML authentication, opening selenium browser...\n")
             chrome_options: webdriver.ChromeOptions = webdriver.ChromeOptions()
-            chrome_options.add_argument(argument="--window-size=800,600")
-            chrome_options.add_argument(argument=f"--user-data-dir={str(CONFIG_FOLDER)}")
-            chrome_options.add_argument(argument="--disable-session-crashed-bubble")
-            chrome_options.add_argument(argument="--hide-crash-restore-bubble")
-            chrome_options.add_experimental_option(name="useAutomationExtension", value=False)
-            chrome_options.add_experimental_option(name="excludeSwitches", value=["enable-automation"])
+            chrome_options.add_argument(argument="--window-size=800,600")  # pyright:ignore[reportUnknownMemberType]
+            chrome_options.add_argument(  # pyright:ignore[reportUnknownMemberType]
+                argument=f"--user-data-dir={str(CONFIG_FOLDER)}"
+            )
+            chrome_options.add_argument(  # pyright:ignore[reportUnknownMemberType]
+                argument="--disable-session-crashed-bubble"
+            )
+            chrome_options.add_argument(  # pyright:ignore[reportUnknownMemberType]
+                argument="--hide-crash-restore-bubble"
+            )
+            chrome_options.add_experimental_option(  # pyright:ignore[reportUnknownMemberType]
+                name="useAutomationExtension", value=False
+            )
+            chrome_options.add_experimental_option(  # pyright:ignore[reportUnknownMemberType]
+                name="excludeSwitches", value=["enable-automation"]
+            )
             driver: WebDriver = webdriver.Chrome(options=chrome_options)
             driver.get(url=url)
-            WebDriverWait(driver=driver, timeout=180).until(
+            _ = WebDriverWait(driver=driver, timeout=180).until(
                 lambda driver: "login successful" in driver.page_source.lower()
                 and any(s in driver.page_source.lower() for s in ("prelogin-cookie", "portal-userauthcookie"))
             )
@@ -208,7 +283,7 @@ def connect_to_vpn_using_nmcli(
             print("The window was closed before finishing the authentication, try again.")
         except Exception as e:
             print(f"An error occurred performing SAML authentication, exception: {e}")
-            traceback.print_tb(tb=e.__traceback__)
+            traceback.print_exception(e)
         finally:
             if not len(cookie) or not len(username):
                 print("No cookie or username was obtained when performing SAML authentication, try again.")
@@ -255,7 +330,7 @@ def connect_to_vpn_using_nmcli(
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
             )
-            secrets.wait()
+            _ = secrets.wait()
             vpn_secrets_dict: dict[str, str] = {}
             for line in cast(IO[str], secrets.stdout):
                 line = line.replace("\n", "")
@@ -278,7 +353,7 @@ def connect_to_vpn_using_nmcli(
                     pass
         except Exception as e:
             print(f"An error occurred getting the vpn secrets for nmcli, exception: {e}")
-            traceback.print_tb(tb=e.__traceback__)
+            traceback.print_exception(e)
         finally:
             if not len(cookie) or not len(fingerprint) or not len(host) or not len(resolve):
                 print("Could not obtain all the vpn secrets for nmcli, try again.")
@@ -294,14 +369,21 @@ def connect_to_vpn_using_nmcli(
             ]
             text_with_vpn_secrets_for_nmcli: str = "\\n".join(vpn_secrets_for_nmcli)
             command_to_connect_to_vpn: str = (
-                f"printf '{text_with_vpn_secrets_for_nmcli.replace('%', '%%')}' | nmcli connection up uuid '{connection_uuid}' passwd-file /dev/stdin"
+                f"printf '{text_with_vpn_secrets_for_nmcli.replace('%', '%%')}' | nmcli connection up uuid"
+                f" '{connection_info.connection_uuid}' passwd-file /dev/stdin"
             )
-            print(f'\n4. Connecting to VPN "{connection_name}" with uuid "{connection_uuid}" using nmcli...')
+            print(
+                f'\n4. Connecting to VPN "{connection_info.connection_name}" with uuid'
+                + f' "{connection_info.connection_uuid}" using nmcli...'
+            )
             print(f'Running command: "{command_to_connect_to_vpn}"\n')
-            subprocess.check_call(args=["bash", "-c", f"export LANG=en && {command_to_connect_to_vpn}"])
+            _ = subprocess.check_call(args=["bash", "-c", f"export LANG=en && {command_to_connect_to_vpn}"])
         except Exception as e:
-            print(f'An error occurred connecting to "{connection_name}" with uuid "{connection_uuid}", exception: {e}')
-            traceback.print_tb(tb=e.__traceback__)
+            print(
+                f'An error occurred connecting to "{connection_info.connection_name}" with uuid'
+                + f' "{connection_info.connection_uuid}", exception: {e}'
+            )
+            traceback.print_exception(e)
 
     url_for_saml_auth: str = get_url_for_saml_authentication()
     if not len(url_for_saml_auth):
@@ -319,11 +401,17 @@ def connect_to_vpn_using_nmcli(
 
 
 class CLIArguments(NamedTuple):
-    connection_name: str
+    connection_name: Optional[str]
+    connection_uuid: Optional[str]
     vpn_portal_gateway: str
     vpn_user_groups: Optional[list[str]]
     vpn_os: Optional[str]
     openconnect_args: Optional[list[str]]
+
+
+class ConnectionInfo(NamedTuple):
+    connection_name: str
+    connection_uuid: str
 
 
 def parse_cli_arguments() -> CLIArguments:
@@ -331,42 +419,55 @@ def parse_cli_arguments() -> CLIArguments:
     parser: ArgumentParser = ArgumentParser(
         prog=APP_NAME,
         description=(
-            "Connect to a Global Protect VPN connection that requires SAML authenticaton using nmcli and openconnect."
+            "Connect to a Global Protect VPN connection that requires SAML authenticaton using NetworkManager (nmcli)"
+            " and openconnect."
         ),
     )
-    parser.add_argument(
+    group: _MutuallyExclusiveGroup = parser.add_mutually_exclusive_group(required=True)
+    _ = group.add_argument(
         "--connection-name",
-        help="Name for the connection to add with nmcli if it's not already created.",
-        required=True,
+        help="Name for the connection to add with NetworkManager (nmcli) if it's not already created.",
     )
-    parser.add_argument(
+    _ = group.add_argument(
+        "--connection-uuid",
+        help=(
+            "Connection UUID for an already existing connection to use to stablish the VPN connection with"
+            " NetworkManager."
+        ),
+    )
+    _ = parser.add_argument(
         "--vpn-portal", "--vpn-gateway", help="Address of the portal/gateway of the Global Protect VPN.", required=True
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--vpn-user-groups",
         help=(
-            "Usergroups to pass to openconnect's --usergroup parameter. It can be a single value or 2 values. "
-            "The first value is used when using openconnect to get the URL to perform the SAML authentication and "
-            "the second one is used when using openconnect to perform the VPN authentication. "
-            "If the value for this parameter is only 'gateway' then 'gateway' will be used as the --usergroup parameter to get the URL for SAML authentication "
-            "and for the VPN authentication the --usergroup parameter will be 'gateway:prelogin-cookie'. "
-            "If the value for this parameter is only 'portal' then 'portal' will be used as the --usergroup parameter to get the URL for SAML authentication "
-            "and for the VPN authentication the --usergroup parameter will be 'portal:portal-userauthcookie'."
+            "Usergroups to pass to openconnect's --usergroup parameter. It can be a single value or 2 values. The first"
+            " value is used when using openconnect to get the URL to perform the SAML authentication and the second one"
+            " is used when using openconnect to perform the VPN authentication. If the value for this parameter is only"
+            " 'gateway' then 'gateway' will be used as the --usergroup parameter to get the URL for SAML authentication"
+            " and for the VPN authentication the --usergroup parameter will be 'gateway:prelogin-cookie'. If the value"
+            " for this parameter is only 'portal' then 'portal' will be used as the --usergroup parameter to get the"
+            " URL for SAML authentication and for the VPN authentication the --usergroup parameter will be"
+            " 'portal:portal-userauthcookie'."
         ),
         nargs="*",
         metavar=("VPN_USER_GROUP_GET_URL_SAML", "VPN_USER_GROUP_CONNECT_VPN"),
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--vpn-os",
-        help="OS to pass to openconnect's --os parameter. Options can be: 'linux', 'linux-64', 'win', 'mac-intel', 'android', 'apple-ios'.",
+        help=(
+            "OS to pass to openconnect's --os parameter. Options can be: 'linux', 'linux-64', 'win', 'mac-intel',"
+            " 'android', 'apple-ios'."
+        ),
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--openconnect-args",
         help=(
-            "Extra arguments to pass to openconnect. It can be a single value or 2 values, make sure to add quotes to distinguish from the normal arguments of the application. "
-            "The first value contains the extra openconnect arguments used to get the URL to perform the SAML authentication and "
-            "the second one contains the extra openconnect arguments used to perform the VPN authentication. "
-            'Example: --openconnect-args "--extra-arg=value --another-arg=value" "--extra-arg=value"'
+            "Extra arguments to pass to openconnect. It can be a single value or 2 values, make sure to add quotes to"
+            " distinguish from the normal arguments of the application. The first value contains the extra openconnect"
+            " arguments used to get the URL to perform the SAML authentication and the second one contains the extra"
+            " openconnect arguments used to perform the VPN authentication. Example: --openconnect-args"
+            ' "--extra-arg=value --another-arg=value" "--extra-arg=value"'
         ),
         nargs="*",
         metavar=("OPENCONNECT_ARGS_GET_URL_SAML", "OPENCONNECT_ARGS_CONNECT_VPN"),
@@ -376,6 +477,7 @@ def parse_cli_arguments() -> CLIArguments:
     args: Namespace = parser.parse_args()
     cli_arguments: CLIArguments = CLIArguments(
         connection_name=args.connection_name,
+        connection_uuid=args.connection_uuid,
         vpn_portal_gateway=args.vpn_portal,
         vpn_user_groups=(
             [x.strip() for x in cast(list[str], args.vpn_user_groups) if len(x.strip())]
@@ -399,7 +501,11 @@ def parse_cli_arguments() -> CLIArguments:
                 x in openconnect_args for x in ("usergroup ", "os ", "--usergroup ", "--os ", "--usergroup=", "--os=")
             ):
                 parser.error(
-                    message="The value/s for the optional parameter --openconnect-args can't contain the arguments '--usergroup' or '--os' since those arguments can be defined as normal arguments of the application."
+                    message=(
+                        "The value/s for the optional parameter --openconnect-args can't contain the arguments"
+                        " '--usergroup' or '--os' since those arguments can be defined as normal arguments of the"
+                        " application."
+                    )
                 )
     return cli_arguments
 
@@ -409,17 +515,24 @@ def main() -> None:
     # Get arguments from command line
     arguments: CLIArguments = parse_cli_arguments()
 
-    # Check if connection exists if not create it
-    uuid_of_connection: Optional[str] = create_connection(
-        connection_name=arguments.connection_name, vpn_portal=arguments.vpn_portal_gateway, vpn_os=arguments.vpn_os
-    )
+    # Get connection info based on the name or the uuid, if the name is provided and not the uuid, and the connection doesn't exist
+    # then the connection is created using NetworkManager (nmcli) and we return the connection info if the creation was successful
+    connection_info: Optional[ConnectionInfo] = None
+    if arguments.connection_name is not None:
+        connection_info = get_or_create_connection_info_based_on_connection_name(
+            connection_name=arguments.connection_name, vpn_portal=arguments.vpn_portal_gateway, vpn_os=arguments.vpn_os
+        )
+    elif arguments.connection_uuid is not None:
+        connection_info = get_connection_info_based_on_uuid(
+            connection_uuid=arguments.connection_uuid, vpn_portal=arguments.vpn_portal_gateway
+        )
 
-    # Check if the uuid for the connection exists
-    if uuid_of_connection is None:
+    # If no connection info was found when providing the uuid or the connection name, return
+    if connection_info is None:
         return
 
     # Check if connection is already connected
-    if connection_is_active(connection_name=arguments.connection_name, connection_uuid=uuid_of_connection):
+    if check_if_connection_is_active(connection_info=connection_info):
         return
 
     # Do SAML auth and get cookie and necessary vpn secrets to connect to the VPN via nmcli
@@ -427,8 +540,7 @@ def main() -> None:
         vpn_portal=arguments.vpn_portal_gateway,
         vpn_user_groups=arguments.vpn_user_groups,
         vpn_os=arguments.vpn_os,
-        connection_name=arguments.connection_name,
-        connection_uuid=uuid_of_connection,
+        connection_info=connection_info,
         openconnect_args=arguments.openconnect_args,
     )
 

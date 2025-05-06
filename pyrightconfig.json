@@ -1,0 +1,7 @@
+{
+    "typeCheckingMode": "all",
+    "reportAny": false,
+    "reportExplicitAny": false,
+    "reportDeprecated": false,
+    "enableTypeIgnoreComments": true
+}
