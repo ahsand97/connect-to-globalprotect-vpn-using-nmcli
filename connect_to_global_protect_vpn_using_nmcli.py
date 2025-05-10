@@ -101,7 +101,7 @@ def get_or_create_connection_info_based_on_connection_name(
             )
         except Exception as e:
             print(f'An error occurred creating connection "{connection_name}", exception: {e}')
-            traceback.print_tb(tb=e.__traceback__)
+            traceback.print_exception(e)
     return (
         ConnectionInfo(connection_name=connection_name, connection_uuid=uuid_of_desired_connection)
         if uuid_of_desired_connection is not None
@@ -219,7 +219,7 @@ def connect_to_vpn_using_nmcli(
                         break
         except Exception as e:
             print(f"An error occurred obtaining URL to perform SAML authentication, exception: {e}")
-            traceback.print_tb(tb=e.__traceback__)
+            traceback.print_exception(e)
         finally:
             if not len(url_for_saml_auth):
                 print("No URL was found to perform SAML authentication, try again.")
